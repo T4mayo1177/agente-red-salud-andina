@@ -52,7 +52,8 @@ Python 3.13 y Node.js 20 o superior.
    - `GEMINI_MODEL`: agente principal. Vacío = `gemini-3.5-flash-lite`. No use `gemini-3.5-flash`: su nivel gratuito es de solo 20 solicitudes por día.
    - `GEMINI_THINKING`: razonamiento del agente (`MINIMAL`, `LOW`, `MEDIUM`, `HIGH`). Vacío = `LOW`. Con menos, en las pruebas el modelo a veces decía «quedó registrada» sin registrar.
    - `GEMINI_MODEL_RESPALDO`: si el modelo del agente agota su cuota (error 429), la misma petición pasa a este modelo, que tiene cuota propia. Vacío = `gemini-3.1-flash-lite`. Durante 10 minutos se usa directo el respaldo.
-   - `GATEWAY_MODEL`: modelo del gateway. Vacío = `gemma-4-26b-a4b-it` (~0,8 s por clasificación). Usa una cuota distinta de la del agente, así que si el agente agota la suya el gateway sigue funcionando. Si el nombre está mal o se agota su cuota, el gateway se salta y responde el agente principal.
+   - `GATEWAY_MODEL`: modelo del gateway. Vacío = `gemini-3.5-flash-lite`, con razonamiento mínimo. Comparte la cuota con el agente: cada mensaje gasta una llamada más de ese modelo.
+   - `GATEWAY_MODEL_RESPALDO`: si el gateway no responde (cuota agotada, error o más de 4 s), clasifica este modelo. Vacío = `gemini-3.1-flash-lite`. Si tampoco responde, el mensaje sigue al agente, que conserva sus reglas de seguridad. Una alternativa con cuota propia es `gemma-4-26b-a4b-it` (~0,8 s en las pruebas).
    - `STORAGE_BACKEND`: `jsonl` (por defecto) o `firestore`.
    - `ALLOWED_ORIGINS`: de dónde acepta peticiones el backend (por defecto `http://localhost:5173`).
    - `PORT`: puerto del backend (por defecto 8080).

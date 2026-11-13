@@ -68,7 +68,7 @@ jobs:
             --region "$REGION" --project "$PROJECT_ID" \
             --allow-unauthenticated --max-instances 1 --quiet \
             --set-secrets GOOGLE_API_KEY=google-api-key:latest \
-            --set-env-vars "^@^GOOGLE_GENAI_USE_VERTEXAI=FALSE@STORAGE_BACKEND=firestore@GEMINI_MODEL=gemini-3.5-flash-lite@GEMINI_MODEL_RESPALDO=gemini-3.1-flash-lite@GATEWAY_MODEL=gemma-4-26b-a4b-it@ALLOWED_ORIGINS=$FRONTEND_URL,http://localhost:5173"
+            --set-env-vars "^@^GOOGLE_GENAI_USE_VERTEXAI=FALSE@STORAGE_BACKEND=firestore@GEMINI_MODEL=gemini-3.5-flash-lite@GEMINI_MODEL_RESPALDO=gemini-3.1-flash-lite@GATEWAY_MODEL=gemini-3.5-flash-lite@GATEWAY_MODEL_RESPALDO=gemini-3.1-flash-lite@ALLOWED_ORIGINS=$FRONTEND_URL,http://localhost:5173"
       - name: Comprobar /health
         run: curl -fsS "$BACKEND_URL/health"
 

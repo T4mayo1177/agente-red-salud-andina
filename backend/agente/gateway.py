@@ -17,10 +17,11 @@ from pydantic import BaseModel
 
 logger = logging.getLogger("red_salud_andina")
 
-# Gemma 4 tiene cuota propia, distinta de la del agente: si el agente agota la suya, el
-# gateway sigue funcionando. En las pruebas clasificó bien en ~0,8 s.
-MODELO_GATEWAY_POR_DEFECTO = "gemma-4-26b-a4b-it"
-ESPERA_MAXIMA = 4  # segundos; si el clasificador tarda más, el mensaje sigue al agente
+# Si el principal no responde (cuota agotada, error o demora), se intenta con el respaldo.
+# Si ninguno responde, el mensaje sigue al agente, que conserva sus reglas de seguridad.
+MODELO_GATEWAY_POR_DEFECTO = "gemini-3.5-flash-lite"
+MODELO_GATEWAY_RESPALDO_POR_DEFECTO = "gemini-3.1-flash-lite"
+ESPERA_MAXIMA = 4  # segundos por modelo; si tarda más, se pasa al siguiente
 
 
 class Categoria(str, enum.Enum):
@@ -95,8 +96,20 @@ def _obtener_cliente() -> genai.Client:
 
 
 async def clasificar(texto: str) -> Categoria:
-    """Pregunta al modelo pequeño a qué categoría pertenece el mensaje."""
-    modelo = os.getenv("GATEWAY_MODEL") or MODELO_GATEWAY_POR_DEFECTO
+    """Clasifica con el modelo principal del gateway; si no responde, con el de respaldo."""
+    principal = os.getenv("GATEWAY_MODEL") or MODELO_GATEWAY_POR_DEFECTO
+    respaldo = os.getenv("GATEWAY_MODEL_RESPALDO") or MODELO_GATEWAY_RESPALDO_POR_DEFECTO
+    try:
+        return await asyncio.wait_for(clasificar_con(principal, texto), timeout=ESPERA_MAXIMA)
+    except Exception as error:
+        if not respaldo or respaldo == principal:
+            raise
+        logger.warning("Gateway: %s no respondió (%s); clasifica %s", principal, type(error).__name__, respaldo)
+        return await asyncio.wait_for(clasificar_con(respaldo, texto), timeout=ESPERA_MAXIMA)
+
+
+async def clasificar_con(modelo: str, texto: str) -> Categoria:
+    """Pregunta a un modelo a qué categoría pertenece el mensaje."""
     # Solo los modelos Gemini aceptan el nivel de razonamiento; Gemma no lo usa.
     razonamiento = types.ThinkingConfig(thinking_level="MINIMAL") if modelo.startswith("gemini") else None
     respuesta = await _obtener_cliente().aio.models.generate_content(
@@ -121,7 +134,7 @@ async def gateway(callback_context) -> types.Content | None:
         return None
 
     try:
-        categoria = await asyncio.wait_for(clasificar(texto), timeout=ESPERA_MAXIMA)
+        categoria = await clasificar(texto)  # cada modelo tiene su propio tope de espera
     except Exception as error:
         # Si el clasificador falla (cuota, red, modelo), el agente principal responde igual.
         logger.warning("Gateway no disponible, sigue al agente: %s", type(error).__name__)

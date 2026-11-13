@@ -56,3 +56,27 @@ def test_runner_real_no_llama_al_agente_principal_en_urgencia(monkeypatch):
     simular(monkeypatch, Categoria.URGENCIA)
     texto = asyncio.run(main.responder(str(uuid.uuid4()), "Mi papá no reacciona"))
     assert texto == gw.RESPUESTAS_FIJAS[Categoria.URGENCIA]
+
+
+def test_si_el_principal_no_responde_clasifica_el_respaldo(monkeypatch):
+    usados = []
+
+    async def clasificar_con_falso(modelo, texto):
+        usados.append(modelo)
+        if modelo == "principal":
+            raise RuntimeError("429 cuota")
+        return Categoria.URGENCIA
+
+    monkeypatch.setenv("GATEWAY_MODEL", "principal")
+    monkeypatch.setenv("GATEWAY_MODEL_RESPALDO", "respaldo")
+    monkeypatch.setattr(gw, "clasificar_con", clasificar_con_falso)
+    assert asyncio.run(gw.clasificar("mi papá no reacciona")) == Categoria.URGENCIA
+    assert usados == ["principal", "respaldo"]
+
+
+def test_si_ninguno_responde_sigue_al_agente(monkeypatch):
+    async def siempre_falla(modelo, texto):
+        raise RuntimeError("503")
+
+    monkeypatch.setattr(gw, "clasificar_con", siempre_falla)
+    assert asyncio.run(gw.gateway(contexto("hola"))) is None
