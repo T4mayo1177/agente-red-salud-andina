@@ -92,7 +92,17 @@ async def responder(session_id: str, mensaje: str) -> str:
             # y se quita la frase para no decirle algo falso a la persona.
             logger.warning("Se quitó un «quedó registrada» falso: el mensaje no era una pregunta")
             texto = "\n".join(l for l in texto.split("\n") if "registrad" not in l.lower()) or texto
+    elif dice_que_no_sabe(texto) and not uso_registro and "?" in mensaje:
+        # Dijo que no tiene la información pero olvidó registrarla: el backend la registra,
+        # para que la operación la vea el lunes aunque el modelo no llamara la herramienta.
+        logger.warning("Registro hecho por el backend: el modelo dijo que no sabe y no registró")
+        registrar_pregunta_sin_respuesta(mensaje, "sin_tema")
     return texto
+
+
+def dice_que_no_sabe(texto: str) -> bool:
+    texto = texto.lower()
+    return "no tengo esa información" in texto or "no tengo información" in texto
 
 
 def quitar_lineas_vacias(texto: str) -> str:

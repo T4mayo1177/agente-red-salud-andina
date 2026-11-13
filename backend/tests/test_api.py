@@ -123,3 +123,19 @@ def test_si_tarda_demasiado_da_el_mensaje_de_respaldo(monkeypatch):
     monkeypatch.setattr(main, "ESPERA_MAXIMA", 0.1)
     monkeypatch.setattr(main, "runner", RunnerLento())
     assert "(601) 555 0100" in enviar("hola").json()["respuesta"]
+
+
+def test_si_dice_que_no_sabe_y_no_registro_el_backend_registra(monkeypatch):
+    registros = []
+    monkeypatch.setattr(main, "registrar_pregunta_sin_respuesta", lambda pregunta, tema: registros.append(pregunta))
+    monkeypatch.setattr(main, "runner", RunnerSimulado(texto="No tengo información sobre nutrición.\nWhatsApp +57 300 555 0100."))
+    enviar("¿Tienen servicio de nutrición?")
+    assert registros == ["¿Tienen servicio de nutrición?"]
+
+
+def test_si_dice_que_no_sabe_pero_no_era_pregunta_no_registra(monkeypatch):
+    registros = []
+    monkeypatch.setattr(main, "registrar_pregunta_sin_respuesta", lambda pregunta, tema: registros.append(pregunta))
+    monkeypatch.setattr(main, "runner", RunnerSimulado(texto="No tengo esa información."))
+    enviar("es para mi mamá")
+    assert registros == []
