@@ -17,9 +17,9 @@ from pydantic import BaseModel
 
 logger = logging.getLogger("red_salud_andina")
 
-# En las pruebas (12/11/2026) gemini-3.1-flash-lite daba 503 por saturación; 3.5-flash-lite con
-# razonamiento mínimo clasificó bien en ~1,3 s. Comparte la cuota del agente (15 por minuto).
-MODELO_GATEWAY_POR_DEFECTO = "gemini-3.5-flash-lite"
+# Gemma 4 tiene cuota propia, distinta de la del agente: si el agente agota la suya, el
+# gateway sigue funcionando. En las pruebas clasificó bien en ~0,8 s.
+MODELO_GATEWAY_POR_DEFECTO = "gemma-4-26b-a4b-it"
 ESPERA_MAXIMA = 4  # segundos; si el clasificador tarda más, el mensaje sigue al agente
 
 
@@ -96,15 +96,18 @@ def _obtener_cliente() -> genai.Client:
 
 async def clasificar(texto: str) -> Categoria:
     """Pregunta al modelo pequeño a qué categoría pertenece el mensaje."""
+    modelo = os.getenv("GATEWAY_MODEL") or MODELO_GATEWAY_POR_DEFECTO
+    # Solo los modelos Gemini aceptan el nivel de razonamiento; Gemma no lo usa.
+    razonamiento = types.ThinkingConfig(thinking_level="MINIMAL") if modelo.startswith("gemini") else None
     respuesta = await _obtener_cliente().aio.models.generate_content(
-        model=os.getenv("GATEWAY_MODEL") or MODELO_GATEWAY_POR_DEFECTO,
+        model=modelo,
         contents=texto,
         config=types.GenerateContentConfig(
             system_instruction=INSTRUCCION_CLASIFICADOR,
             response_mime_type="application/json",
             response_schema=Clasificacion,
             temperature=0,
-            thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),  # clasificar no requiere pensar
+            thinking_config=razonamiento,  # clasificar no requiere pensar
         ),
     )
     return respuesta.parsed.categoria

@@ -59,9 +59,10 @@ def revisar(caso, respuesta):
     return faltan, sobran
 
 
-async def correr(pausa):
-    casos = json.loads((CARPETA / "evaluacion.json").read_text(encoding="utf-8"))
-    salida = CARPETA / "resultados" / f"evaluacion_{datetime.now():%Y-%m-%d_%H%M%S}.jsonl"
+async def correr(pausa, archivo_casos):
+    casos = json.loads((CARPETA / archivo_casos).read_text(encoding="utf-8"))
+    nombre = Path(archivo_casos).stem
+    salida = CARPETA / "resultados" / f"{nombre}_{datetime.now():%Y-%m-%d_%H%M%S}.jsonl"
     salida.parent.mkdir(exist_ok=True)
     with salida.open("w", encoding="utf-8") as archivo:
         for caso in casos:
@@ -74,7 +75,7 @@ async def correr(pausa):
                     respuesta = await main.responder(sesion, mensaje)
                 except Exception as error:
                     respuesta = f"ERROR {type(error).__name__} {getattr(error, 'code', '')}"
-                respuesta = respuesta or main.MENSAJE_RESPALDO
+                respuesta = respuesta or main.mensaje_respaldo()
                 turnos.append({
                     "mensaje": mensaje,
                     "respuesta": respuesta,
@@ -102,4 +103,6 @@ async def correr(pausa):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pausa", type=float, default=13, help="segundos entre mensajes (cuota de 15 por minuto)")
-    asyncio.run(correr(parser.parse_args().pausa))
+    parser.add_argument("--casos", default="evaluacion.json", help="archivo de casos dentro de pruebas/")
+    args = parser.parse_args()
+    asyncio.run(correr(args.pausa, args.casos))

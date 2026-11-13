@@ -1,5 +1,6 @@
 """API del agente: POST /chat y GET /health."""
 
+import asyncio
 import logging
 import os
 import uuid
@@ -13,6 +14,7 @@ from google.genai import types
 from pydantic import BaseModel, StringConstraints
 
 from agente.agent import root_agent  # también carga el .env
+from agente.fecha import ahora_colombia, asesores_disponibles
 from agente.herramientas import registrar_pregunta_sin_respuesta
 
 logger = logging.getLogger("red_salud_andina")
@@ -20,13 +22,24 @@ logging.basicConfig(level=logging.INFO)
 
 APP_NAME = "agente"  # igual al nombre de la carpeta del agente
 USUARIO = "anonimo"  # no identificamos a nadie
+ESPERA_MAXIMA = 30  # segundos por respuesta antes de dar el mensaje de respaldo
 
-MENSAJE_RESPALDO = (
-    "Lo siento, en este momento no puedo responder. Puede comunicarse con un asesor "
-    "en el call center (601) 555 0100 o por WhatsApp al +57 300 555 0100, de lunes a "
-    "viernes de 7:00 a 19:00 y sábados de 8:00 a 14:00. Fuera de ese horario, use el "
-    "formulario de contacto en citas.redsaludandina.example; responden el siguiente día hábil."
+RESPALDO_CON_ASESORES = (
+    "Lo siento, en este momento no puedo responder.\n"
+    "Un asesor le atiende ahora por WhatsApp +57 300 555 0100 o en el call center (601) 555 0100.\n"
+    "Horario: lunes a viernes de 7:00 a 19:00 y sábados de 8:00 a 14:00."
 )
+RESPALDO_SIN_ASESORES = (
+    "Lo siento, en este momento no puedo responder.\n"
+    "A esta hora no hay asesores: deje su consulta en el formulario de citas.redsaludandina.example y le responden el siguiente día hábil.\n"
+    "Call center (601) 555 0100 y WhatsApp +57 300 555 0100: lunes a viernes de 7:00 a 19:00 y sábados de 8:00 a 14:00."
+)
+
+
+def mensaje_respaldo() -> str:
+    """Si el agente no puede responder, da el canal que sirve a esta hora de Colombia."""
+    return RESPALDO_CON_ASESORES if asesores_disponibles(ahora_colombia()) else RESPALDO_SIN_ASESORES
+
 
 servicio_sesiones = InMemorySessionService()
 runner = Runner(app_name=APP_NAME, agent=root_agent, session_service=servicio_sesiones)
@@ -69,10 +82,16 @@ async def responder(session_id: str, mensaje: str) -> str:
 
     texto = quitar_pregunta_de_cierre(quitar_lineas_vacias(texto))
     if dice_que_registro(texto) and not uso_registro:
-        # El modelo dijo «quedó registrada» sin llamar la herramienta: se registra aquí
-        # para que lo que le dijimos a la persona sea cierto.
-        logger.warning("Registro hecho por el backend: el modelo no llamó la herramienta")
-        registrar_pregunta_sin_respuesta(mensaje, "sin_tema")
+        if "?" in mensaje:
+            # El modelo dijo «quedó registrada» sin llamar la herramienta: se registra aquí
+            # para que lo que le dijimos a la persona sea cierto.
+            logger.warning("Registro hecho por el backend: el modelo no llamó la herramienta")
+            registrar_pregunta_sin_respuesta(mensaje, "sin_tema")
+        else:
+            # No era una pregunta (p. ej. «es para mi mamá»): no se registra nada,
+            # y se quita la frase para no decirle algo falso a la persona.
+            logger.warning("Se quitó un «quedó registrada» falso: el mensaje no era una pregunta")
+            texto = "\n".join(l for l in texto.split("\n") if "registrad" not in l.lower()) or texto
     return texto
 
 
@@ -102,12 +121,13 @@ def dice_que_registro(texto: str) -> bool:
 @app.post("/chat", response_model=RespuestaChat)
 async def chat(peticion: PeticionChat) -> RespuestaChat:
     try:
-        texto = await responder(str(peticion.session_id), peticion.mensaje)
+        # Tope de espera: si Gemini está saturado y reintenta, la persona no espera más de 30 s.
+        texto = await asyncio.wait_for(responder(str(peticion.session_id), peticion.mensaje), timeout=ESPERA_MAXIMA)
     except Exception as error:
         # Solo el tipo de error: nunca el texto que escribió la persona.
         logger.error("No se pudo generar la respuesta: %s %s", type(error).__name__, getattr(error, "code", ""))
         texto = ""
-    return RespuestaChat(respuesta=texto or MENSAJE_RESPALDO)
+    return RespuestaChat(respuesta=texto or mensaje_respaldo())
 
 
 @app.get("/health")

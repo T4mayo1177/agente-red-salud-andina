@@ -5,7 +5,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from google.adk.agents import LlmAgent
-from google.adk.models import Gemini
 from google.genai import types
 
 _CARPETA = Path(__file__).resolve().parent
@@ -27,9 +26,12 @@ if _ENV:
 from .fecha import ahora_colombia, describir_asesores, describir_momento  # noqa: E402
 from .gateway import gateway  # noqa: E402
 from .herramientas import registrar_pregunta_sin_respuesta  # noqa: E402
+from .modelo import GeminiConRespaldo  # noqa: E402
 
 # Flash-Lite: ~500 solicitudes/día gratis (Flash solo da 20). Verifique en aistudio.google.com/rate-limit.
 MODELO_POR_DEFECTO = "gemini-3.5-flash-lite"
+# Si el principal agota su cuota (429), responde este, que tiene cuota propia.
+MODELO_RESPALDO_POR_DEFECTO = "gemini-3.1-flash-lite"
 
 reglas_seguridad = (_CARPETA / "reglas_seguridad.md").read_text(encoding="utf-8")
 instrucciones = (_CARPETA / "instrucciones.md").read_text(encoding="utf-8")
@@ -48,23 +50,29 @@ def construir_instruccion(_contexto) -> str:
         + describir_asesores(ahora) + "\n"
     )
 
-# Si Gemini está saturado (503) o se pasa el límite por minuto (429), reintenta
-# hasta 3 veces esperando 2, 4 y 8 segundos antes de rendirse.
+# Si Gemini está saturado (503) o falla en el servidor, reintenta hasta 3 veces esperando
+# 2, 4 y 8 segundos. El 429 (cuota agotada) no se reintenta: pasa de una al modelo de respaldo.
 REINTENTOS = types.HttpRetryOptions(
     attempts=4,
     initial_delay=2,
     max_delay=8,
-    http_status_codes=[429, 500, 503, 504],
+    http_status_codes=[500, 503, 504],
 )
 
 root_agent = LlmAgent(
     name="asistente_red_salud_andina",
-    model=Gemini(model=os.getenv("GEMINI_MODEL") or MODELO_POR_DEFECTO, retry_options=REINTENTOS),
+    model=GeminiConRespaldo(
+        model=os.getenv("GEMINI_MODEL") or MODELO_POR_DEFECTO,
+        modelo_respaldo=os.getenv("GEMINI_MODEL_RESPALDO") or MODELO_RESPALDO_POR_DEFECTO,
+        retry_options=REINTENTOS,
+    ),
     instruction=construir_instruccion,
     tools=[registrar_pregunta_sin_respuesta],
     # Razonamiento bajo: en las pruebas, sin él Flash-Lite decía «quedó registrada» sin llamar
     # la herramienta; con él la llamó siempre. Cuesta 1–3 s más por respuesta.
+    # Temperatura baja: la misma pregunta debe recibir la misma respuesta completa.
     generate_content_config=types.GenerateContentConfig(
+        temperature=0.2,
         thinking_config=types.ThinkingConfig(thinking_level=os.getenv("GEMINI_THINKING") or "LOW"),
     ),
     before_agent_callback=gateway,  # un modelo pequeño filtra los casos especiales

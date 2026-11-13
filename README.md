@@ -51,7 +51,8 @@ Python 3.13 y Node.js 20 o superior.
    - `GOOGLE_API_KEY`: la clave. `GOOGLE_GENAI_USE_VERTEXAI=FALSE`: usar AI Studio, no Vertex AI.
    - `GEMINI_MODEL`: agente principal. Vacío = `gemini-3.5-flash-lite`. No use `gemini-3.5-flash`: su nivel gratuito es de solo 20 solicitudes por día.
    - `GEMINI_THINKING`: razonamiento del agente (`MINIMAL`, `LOW`, `MEDIUM`, `HIGH`). Vacío = `LOW`. Con menos, en las pruebas el modelo a veces decía «quedó registrada» sin registrar.
-   - `GATEWAY_MODEL`: modelo pequeño del gateway. Vacío = `gemini-3.5-flash-lite`, con razonamiento mínimo (~1,3 s). En las pruebas, `gemini-3.1-flash-lite` daba 503 por saturación. Si usa el mismo modelo del agente, comparten la cuota: cada mensaje gasta 2–3 llamadas de ese modelo. Si el nombre está mal o se agota su cuota, el gateway se salta y responde el agente principal.
+   - `GEMINI_MODEL_RESPALDO`: si el modelo del agente agota su cuota (error 429), la misma petición pasa a este modelo, que tiene cuota propia. Vacío = `gemini-3.1-flash-lite`. Durante 10 minutos se usa directo el respaldo.
+   - `GATEWAY_MODEL`: modelo del gateway. Vacío = `gemma-4-26b-a4b-it` (~0,8 s por clasificación). Usa una cuota distinta de la del agente, así que si el agente agota la suya el gateway sigue funcionando. Si el nombre está mal o se agota su cuota, el gateway se salta y responde el agente principal.
    - `STORAGE_BACKEND`: `jsonl` (por defecto) o `firestore`.
    - `ALLOWED_ORIGINS`: de dónde acepta peticiones el backend (por defecto `http://localhost:5173`).
    - `PORT`: puerto del backend (por defecto 8080).

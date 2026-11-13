@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from types import SimpleNamespace
 
@@ -91,3 +92,34 @@ def test_quita_oferta_de_cierre_pero_no_la_aclaracion(monkeypatch):
     assert enviar("hola").json()["respuesta"] == "Los menores de 5 años no pagan."
     monkeypatch.setattr(main, "runner", RunnerSimulado(texto="Puede pedirla por WhatsApp.\n¿Para qué especialidad la necesita?"))
     assert enviar("hola").json()["respuesta"].endswith("¿Para qué especialidad la necesita?")
+
+
+def test_respaldo_de_noche_ofrece_primero_el_formulario(monkeypatch):
+    monkeypatch.setattr(main, "asesores_disponibles", lambda momento: False)
+    monkeypatch.setattr(main, "runner", RunnerSimulado(error=RuntimeError("429 cuota")))
+    texto = enviar("hola").json()["respuesta"]
+    assert "formulario" in texto.splitlines()[1]
+
+
+def test_respaldo_en_horario_ofrece_asesor(monkeypatch):
+    monkeypatch.setattr(main, "asesores_disponibles", lambda momento: True)
+    monkeypatch.setattr(main, "runner", RunnerSimulado(error=RuntimeError("429 cuota")))
+    assert "asesor le atiende ahora" in enviar("hola").json()["respuesta"]
+
+
+def test_si_no_era_pregunta_no_registra_y_quita_la_frase(monkeypatch):
+    registros = []
+    monkeypatch.setattr(main, "registrar_pregunta_sin_respuesta", lambda pregunta, tema: registros.append(pregunta))
+    monkeypatch.setattr(main, "runner", RunnerSimulado(texto="No tengo esa información.\nDejé registrada su pregunta para el equipo."))
+    assert enviar("es para mi mamá").json()["respuesta"] == "No tengo esa información."
+    assert registros == []
+
+
+def test_si_tarda_demasiado_da_el_mensaje_de_respaldo(monkeypatch):
+    class RunnerLento(RunnerSimulado):
+        async def run_async(self, **kwargs):
+            await asyncio.sleep(1)
+            yield SimpleNamespace(is_final_response=lambda: True, content=SimpleNamespace(parts=[]))
+    monkeypatch.setattr(main, "ESPERA_MAXIMA", 0.1)
+    monkeypatch.setattr(main, "runner", RunnerLento())
+    assert "(601) 555 0100" in enviar("hola").json()["respuesta"]
