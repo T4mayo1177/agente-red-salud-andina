@@ -24,6 +24,7 @@ _ENV = buscar_env()
 if _ENV:
     load_dotenv(_ENV)
 
+from .fecha import ahora_colombia, describir_asesores, describir_momento  # noqa: E402
 from .gateway import gateway  # noqa: E402
 from .herramientas import registrar_pregunta_sin_respuesta  # noqa: E402
 
@@ -33,6 +34,19 @@ MODELO_POR_DEFECTO = "gemini-3.5-flash-lite"
 reglas_seguridad = (_CARPETA / "reglas_seguridad.md").read_text(encoding="utf-8")
 instrucciones = (_CARPETA / "instrucciones.md").read_text(encoding="utf-8")
 base_conocimiento = (_CARPETA / "base_conocimiento.md").read_text(encoding="utf-8")
+
+# Las reglas de seguridad van primero: tienen prioridad sobre todo lo demás.
+INSTRUCCION_FIJA = reglas_seguridad + "\n\n" + instrucciones + "\n\n# Base de conocimiento\n" + base_conocimiento
+
+
+def construir_instruccion(_contexto) -> str:
+    """Se ejecuta en cada turno: agrega la fecha y hora actual de Colombia al final."""
+    ahora = ahora_colombia()
+    return (
+        INSTRUCCION_FIJA
+        + "\n\n# Momento actual\nAhora es " + describir_momento(ahora) + ".\n"
+        + describir_asesores(ahora) + "\n"
+    )
 
 # Si Gemini está saturado (503) o se pasa el límite por minuto (429), reintenta
 # hasta 3 veces esperando 2, 4 y 8 segundos antes de rendirse.
@@ -46,8 +60,7 @@ REINTENTOS = types.HttpRetryOptions(
 root_agent = LlmAgent(
     name="asistente_red_salud_andina",
     model=Gemini(model=os.getenv("GEMINI_MODEL") or MODELO_POR_DEFECTO, retry_options=REINTENTOS),
-    # Las reglas de seguridad van primero: tienen prioridad sobre todo lo demás.
-    instruction=reglas_seguridad + "\n\n" + instrucciones + "\n\n# Base de conocimiento\n" + base_conocimiento,
+    instruction=construir_instruccion,
     tools=[registrar_pregunta_sin_respuesta],
     # Razonamiento bajo: en las pruebas, sin él Flash-Lite decía «quedó registrada» sin llamar
     # la herramienta; con él la llamó siempre. Cuesta 1–3 s más por respuesta.
