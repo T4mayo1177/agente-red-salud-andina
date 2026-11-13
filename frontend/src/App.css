@@ -106,6 +106,29 @@ button:disabled {
   display: flex;
   align-items: flex-end;
   gap: var(--space-1);
+  animation: aparecer 0.3s ease-out both;
+}
+
+/* Cada mensaje nuevo entra subiendo un poco y desvaneciéndose */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Texto solo para lectores de pantalla */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .fila.persona {
@@ -183,7 +206,9 @@ button:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .escribiendo span {
+  .escribiendo span,
+  .fila,
+  .sugerencias button {
     animation: none;
   }
 }
@@ -205,6 +230,20 @@ button:disabled {
   font-size: var(--label-size);
   font-weight: var(--weight-bold);
   transition: background 0.15s ease;
+  animation: aparecer 0.3s ease-out both;
+}
+
+/* Las sugerencias entran una tras otra */
+.sugerencias button:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.sugerencias button:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.sugerencias button:nth-child(4) {
+  animation-delay: 0.24s;
 }
 
 .sugerencias button:hover:not(:disabled) {

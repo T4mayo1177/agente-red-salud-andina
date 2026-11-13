@@ -16,6 +16,14 @@ const SUGERENCIAS = [
   '¿Cómo veo mis resultados de laboratorio?',
 ]
 
+// Animación del saludo: puntos de "escribiendo" y luego el texto palabra por palabra.
+const ESPERA_SALUDO_MS = 900
+const MS_POR_PALABRA = 45
+
+function prefiereMenosMovimiento() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+}
+
 const ERROR_CONEXION =
   'No pude conectarme. Puede llamar al (601) 555 0100 o escribir al WhatsApp +57 300 555 0100, de lunes a viernes de 7:00 a 19:00 y sábados de 8:00 a 14:00. Fuera de ese horario: formulario en citas.redsaludandina.example.'
 
@@ -39,10 +47,27 @@ function leerId() {
 
 export default function App() {
   const [sessionId, setSessionId] = useState(leerId)
-  const [mensajes, setMensajes] = useState([{ autor: 'agente', texto: BIENVENIDA }])
+  const [mensajes, setMensajes] = useState([])
   const [texto, setTexto] = useState('')
   const [esperando, setEsperando] = useState(false)
+  // true mientras el saludo inicial se está "escribiendo".
+  const [presentando, setPresentando] = useState(true)
   const finRef = useRef(null)
+
+  // Cada conversación nueva empieza con el saludo animado.
+  useEffect(() => {
+    if (prefiereMenosMovimiento()) {
+      setMensajes([{ autor: 'agente', texto: BIENVENIDA }])
+      setPresentando(false)
+      return
+    }
+    setMensajes([])
+    setPresentando(true)
+    const espera = setTimeout(() => {
+      setMensajes([{ autor: 'agente', texto: BIENVENIDA, animar: true }])
+    }, ESPERA_SALUDO_MS)
+    return () => clearTimeout(espera)
+  }, [sessionId])
 
   useEffect(() => {
     finRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -50,7 +75,7 @@ export default function App() {
 
   async function enviar(mensaje) {
     const limpio = mensaje.trim()
-    if (!limpio || esperando) return
+    if (!limpio || esperando || presentando) return
     setMensajes((previos) => [...previos, { autor: 'persona', texto: limpio }])
     setTexto('')
     setEsperando(true)
@@ -71,9 +96,13 @@ export default function App() {
   }
 
   function nuevaConversacion() {
-    setSessionId(nuevoId())
-    setMensajes([{ autor: 'agente', texto: BIENVENIDA }])
+    setSessionId(nuevoId()) // el efecto de arriba vuelve a mostrar el saludo animado
     setTexto('')
+  }
+
+  function terminarSaludo() {
+    setMensajes((previos) => previos.map((m) => ({ ...m, animar: false })))
+    setPresentando(false)
   }
 
   return (
@@ -95,10 +124,12 @@ export default function App() {
         {mensajes.map((m, i) => (
           <div key={i} className={`fila ${m.autor}`}>
             {m.autor === 'agente' && <Avatar />}
-            <p className={`burbuja ${m.autor}`}>{m.texto}</p>
+            <p className={`burbuja ${m.autor}`}>
+              {m.animar ? <TextoAnimado texto={m.texto} alTerminar={terminarSaludo} /> : m.texto}
+            </p>
           </div>
         ))}
-        {mensajes.length === 1 && (
+        {mensajes.length === 1 && !presentando && (
           <div className="sugerencias">
             {SUGERENCIAS.map((s) => (
               <button type="button" key={s} onClick={() => enviar(s)} disabled={esperando}>
@@ -107,7 +138,7 @@ export default function App() {
             ))}
           </div>
         )}
-        {esperando && (
+        {(esperando || (presentando && mensajes.length === 0)) && (
           <div className="fila agente">
             <Avatar />
             <p className="burbuja agente escribiendo" aria-label="El asistente está escribiendo">
@@ -135,7 +166,7 @@ export default function App() {
           disabled={esperando}
           aria-label="Su pregunta"
         />
-        <button type="submit" disabled={esperando || !texto.trim()}>
+        <button type="submit" disabled={esperando || presentando || !texto.trim()}>
           Enviar
         </button>
       </form>
@@ -153,6 +184,29 @@ function Logo() {
       <rect x="17" y="7" width="6" height="16" rx="1.5" fill="var(--secondary-plus-300)" />
       <rect x="12" y="12" width="16" height="6" rx="1.5" fill="var(--secondary-plus-300)" />
     </svg>
+  )
+}
+
+// Muestra el texto palabra por palabra, conservando los saltos de línea.
+function TextoAnimado({ texto, alTerminar }) {
+  const partes = texto.split(/(\s+)/) // palabras y espacios intercalados
+  const [visibles, setVisibles] = useState(0)
+
+  useEffect(() => {
+    if (visibles >= partes.length) {
+      alTerminar()
+      return
+    }
+    const siguiente = setTimeout(() => setVisibles((v) => v + 2), MS_POR_PALABRA)
+    return () => clearTimeout(siguiente)
+  }, [visibles, partes.length, alTerminar])
+
+  return (
+    <>
+      <span aria-hidden="true">{partes.slice(0, visibles).join('')}</span>
+      {/* Los lectores de pantalla leen el mensaje completo una sola vez. */}
+      <span className="solo-lector">{texto}</span>
+    </>
   )
 }
 
