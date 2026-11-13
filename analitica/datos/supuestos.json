@@ -1,0 +1,58 @@
+{
+ "rows": [
+  {
+   "parametro": "costo_minuto",
+   "valor": 665,
+   "fuente": "Anexo: costo medio por minuto de asesor",
+   "como_comprobarlo": "Dato del anexo"
+  },
+  {
+   "parametro": "dias_mes",
+   "valor": 22,
+   "fuente": "Anexo: mes típico de 22 días hábiles",
+   "como_comprobarlo": "Dato del anexo"
+  },
+  {
+   "parametro": "minutos_jornada",
+   "valor": 480,
+   "fuente": "Anexo: cada asesor trabaja 8 horas diarias",
+   "como_comprobarlo": "Dato del anexo"
+  },
+  {
+   "parametro": "costo_mensual",
+   "valor": 98000000,
+   "fuente": "Anexo: costo mensual del call center",
+   "como_comprobarlo": "Dato del anexo"
+  },
+  {
+   "parametro": "llamadas_dia",
+   "valor": 900,
+   "fuente": "Anexo: llamadas atendidas por día hábil",
+   "como_comprobarlo": "Dato del anexo"
+  },
+  {
+   "parametro": "quejas_mes",
+   "valor": 310,
+   "fuente": "Anexo: quejas formales al mes (call center y portal)",
+   "como_comprobarlo": "Dato del anexo"
+  },
+  {
+   "parametro": "adopcion_baja",
+   "valor": 0.29,
+   "fuente": "Supuesto: 34% de la encuesta menos 5 puntos de margen",
+   "como_comprobarlo": "Medirlo en un piloto: chats iniciados / llamadas de esos motivos"
+  },
+  {
+   "parametro": "adopcion_alta",
+   "valor": 0.39,
+   "fuente": "Supuesto: 34% de la encuesta más 5 puntos de margen",
+   "como_comprobarlo": "Medirlo en un piloto: chats iniciados / llamadas de esos motivos"
+  }
+ ],
+ "meta": [
+  {
+   "label": "Fuente",
+   "value": "Anexo del enunciado y supuestos declarados"
+  }
+ ]
+}

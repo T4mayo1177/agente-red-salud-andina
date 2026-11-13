@@ -1,0 +1,97 @@
+# Despliegue continuo: en cada push a main corre las pruebas y, si pasan,
+# despliega el backend y luego el frontend en Cloud Run.
+# GitHub se autentica en GCP con Workload Identity Federation (sin llaves JSON).
+# La clave de Gemini no pasa por GitHub: Cloud Run la lee de Secret Manager.
+name: Desplegar en Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: red-salud-andina-demo
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev/red-salud-andina-demo/red-salud
+  WIF_PROVIDER: projects/94195021809/locations/global/workloadIdentityPools/github/providers/github
+  DEPLOY_SA: github-deployer@red-salud-andina-demo.iam.gserviceaccount.com
+  BACKEND_SERVICE: red-salud-backend
+  FRONTEND_SERVICE: red-salud-frontend
+  # Las URLs de Cloud Run son fijas: <servicio>-<número de proyecto>.<región>.run.app
+  BACKEND_URL: https://red-salud-backend-94195021809.us-central1.run.app
+  FRONTEND_URL: https://red-salud-frontend-94195021809.us-central1.run.app
+
+permissions:
+  contents: read
+  id-token: write # necesario para Workload Identity Federation
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      # Las pruebas no llaman a Gemini: no necesitan la clave.
+      - run: python -m pytest -q
+
+  backend:
+    needs: pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Construir y subir la imagen
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          docker build -t "$REGISTRY/backend:$GITHUB_SHA" backend
+          docker push "$REGISTRY/backend:$GITHUB_SHA"
+      - name: Desplegar en Cloud Run
+        run: |
+          gcloud run deploy "$BACKEND_SERVICE" \
+            --image "$REGISTRY/backend:$GITHUB_SHA" \
+            --region "$REGION" --project "$PROJECT_ID" \
+            --allow-unauthenticated --max-instances 1 --quiet \
+            --set-secrets GOOGLE_API_KEY=google-api-key:latest \
+            --set-env-vars "^@^GOOGLE_GENAI_USE_VERTEXAI=FALSE@STORAGE_BACKEND=firestore@GEMINI_MODEL=gemini-3.5-flash-lite@GATEWAY_MODEL=gemini-3.5-flash-lite@ALLOWED_ORIGINS=$FRONTEND_URL,http://localhost:5173"
+      - name: Comprobar /health
+        run: curl -fsS "$BACKEND_URL/health"
+
+  frontend:
+    needs: backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Construir y subir la imagen
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          docker build --build-arg VITE_API_URL="$BACKEND_URL" -t "$REGISTRY/frontend:$GITHUB_SHA" frontend
+          docker push "$REGISTRY/frontend:$GITHUB_SHA"
+      - name: Desplegar en Cloud Run
+        run: |
+          gcloud run deploy "$FRONTEND_SERVICE" \
+            --image "$REGISTRY/frontend:$GITHUB_SHA" \
+            --region "$REGION" --project "$PROJECT_ID" \
+            --allow-unauthenticated --max-instances 2 --quiet
+      - name: Comprobar que la página carga
+        run: curl -fsS -o /dev/null "$FRONTEND_URL"

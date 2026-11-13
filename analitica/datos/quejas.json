@@ -1,0 +1,52 @@
+{
+ "rows": [
+  {
+   "motivo": "Espera larga en la línea",
+   "porcentaje": 32,
+   "relacion_agente": "Indirecto: libera asesores de llamadas informativas",
+   "pruebas": ""
+  },
+  {
+   "motivo": "Información distinta según quien responda",
+   "porcentaje": 21,
+   "relacion_agente": "Directo: una sola fuente para requisitos, horarios y cuotas",
+   "pruebas": "T05, T06, T15"
+  },
+  {
+   "motivo": "Cita perdida por falta de autorización u orden",
+   "porcentaje": 17,
+   "relacion_agente": "Directo: anticipa orden, autorización y los 3 días hábiles",
+   "pruebas": "T04, T13, T15"
+  },
+  {
+   "motivo": "Cobro inesperado",
+   "porcentaje": 11,
+   "relacion_agente": "Directo: informa la cuota y quién no paga",
+   "pruebas": "T07, T08, T30"
+  },
+  {
+   "motivo": "No encuentra o no recibe sus resultados",
+   "porcentaje": 9,
+   "relacion_agente": "Directo: dice dónde y cuándo salen",
+   "pruebas": "T10"
+  },
+  {
+   "motivo": "Trato del asesor",
+   "porcentaje": 6,
+   "relacion_agente": "No lo aborda",
+   "pruebas": ""
+  },
+  {
+   "motivo": "Otros",
+   "porcentaje": 4,
+   "relacion_agente": "No lo aborda",
+   "pruebas": ""
+  }
+ ],
+ "meta": [
+  {
+   "label": "Fuente",
+   "value": "Anexo: 310 quejas formales al mes y su distribución por motivo"
+  }
+ ]
+}

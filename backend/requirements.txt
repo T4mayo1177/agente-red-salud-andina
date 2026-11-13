@@ -1,0 +1,8 @@
+google-adk==2.14.0
+fastapi==0.162.5
+uvicorn==0.54.0
+python-dotenv==1.2.4
+google-cloud-firestore==2.34.1
+# Solo para las pruebas
+pytest==9.2.0
+httpx==0.28.1

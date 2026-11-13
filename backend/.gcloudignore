@@ -1,0 +1,8 @@
+.env
+.env.*
+.venv/
+data/*.jsonl
+tests/
+__pycache__/
+.pytest_cache/
+.gcloudignore

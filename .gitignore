@@ -1,0 +1,16 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+node_modules/
+dist/
+backend/data/*.jsonl
+pruebas/resultados/*
+!pruebas/resultados/evaluacion_*.jsonl
+# Versiones de trabajo descartadas
+variantes/
+
+# Configuración local de Claude Code
+.claude/
+# Enunciado de la prueba (documento de la empresa, no se publica)
+Entregable*

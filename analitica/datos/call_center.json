@@ -1,0 +1,100 @@
+{
+ "rows": [
+  {
+   "motivo": "Horarios y ubicación",
+   "porcentaje": 14,
+   "llamadas_dia": 126,
+   "duracion_min": 2.5,
+   "resueltas_primera_pct": 95,
+   "alcance": "Informativa: el agente la resuelve",
+   "incluida": true
+  },
+  {
+   "motivo": "Agendar una cita",
+   "porcentaje": 28,
+   "llamadas_dia": 252,
+   "duracion_min": 7.5,
+   "resueltas_primera_pct": 78,
+   "alcance": "Trámite: el agente no agenda",
+   "incluida": false
+  },
+  {
+   "motivo": "Cancelar o reprogramar",
+   "porcentaje": 12,
+   "llamadas_dia": 108,
+   "duracion_min": 4.0,
+   "resueltas_primera_pct": 85,
+   "alcance": "Trámite: el agente no cancela",
+   "incluida": false
+  },
+  {
+   "motivo": "Requisitos",
+   "porcentaje": 13,
+   "llamadas_dia": 117,
+   "duracion_min": 4.5,
+   "resueltas_primera_pct": 60,
+   "alcance": "Informativa: el agente la resuelve",
+   "incluida": true
+  },
+  {
+   "motivo": "Cuotas y costos",
+   "porcentaje": 6,
+   "llamadas_dia": 54,
+   "duracion_min": 3.5,
+   "resueltas_primera_pct": 70,
+   "alcance": "Informativa: el agente la resuelve",
+   "incluida": true
+  },
+  {
+   "motivo": "Resultados de laboratorio",
+   "porcentaje": 8,
+   "llamadas_dia": 72,
+   "duracion_min": 5.0,
+   "resueltas_primera_pct": 55,
+   "alcance": "Necesita datos del paciente",
+   "incluida": false
+  },
+  {
+   "motivo": "Historia clínica y certificados",
+   "porcentaje": 4,
+   "llamadas_dia": 36,
+   "duracion_min": 5.0,
+   "resueltas_primera_pct": 60,
+   "alcance": "Trámite en sede",
+   "incluida": false
+  },
+  {
+   "motivo": "Estado de una autorización",
+   "porcentaje": 7,
+   "llamadas_dia": 63,
+   "duracion_min": 8.0,
+   "resueltas_primera_pct": 40,
+   "alcance": "Necesita datos del paciente",
+   "incluida": false
+  },
+  {
+   "motivo": "Quejas y reclamos",
+   "porcentaje": 5,
+   "llamadas_dia": 45,
+   "duracion_min": 9.0,
+   "resueltas_primera_pct": 35,
+   "alcance": "Trámite: lo atiende una persona",
+   "incluida": false
+  },
+  {
+   "motivo": "Otros",
+   "porcentaje": 3,
+   "llamadas_dia": 27,
+   "duracion_min": 6.0,
+   "resueltas_primera_pct": 50,
+   "alcance": "Sin detalle en el anexo",
+   "incluida": false
+  }
+ ],
+ "meta": [
+  {
+   "label": "Fuente",
+   "value": "Anexo del enunciado, tabla «Por qué llaman (llamadas atendidas)»"
+  }
+ ]
+}
